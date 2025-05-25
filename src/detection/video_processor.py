@@ -25,7 +25,7 @@ class MottuVideoProcessor:
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_frames = min(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), max_frames)
         
-        print(f"📹 Processando: {total_frames} frames @ {fps} FPS")
+        print(f"📹 IdeaTec processando: {total_frames} frames @ {fps} FPS")
         
         # Configurar gravação
         writer = None
@@ -42,15 +42,15 @@ class MottuVideoProcessor:
                 if not ret:
                     break
                 
-                # Detectar motos no frame
-                frame_info = self.detector.detect_motorcycles_in_frame(frame)
+                # CORREÇÃO: Usar o método correto do detector
+                frame_info = self.detector.detect_and_classify_motorcycles(frame)
                 
                 # Anotar frame
-                annotated_frame = self.detector.draw_detections_advanced(frame, frame_info)
+                annotated_frame = self.detector.draw_detections_professional_style(frame, frame_info)
                 
                 # Adicionar informações do progresso
-                progress_text = f"Frame: {frame_count+1}/{total_frames} ({(frame_count/total_frames)*100:.1f}%)"
-                cv2.putText(annotated_frame, progress_text, (width-300, height-20), 
+                progress_text = f"IdeaTec Frame: {frame_count+1}/{total_frames} ({(frame_count/total_frames)*100:.1f}%)"
+                cv2.putText(annotated_frame, progress_text, (width-400, height-20), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
                 
                 # Salvar frame anotado
@@ -62,7 +62,7 @@ class MottuVideoProcessor:
                 
                 # Log de progresso
                 if frame_count % 30 == 0:
-                    print(f"✅ Processado: {frame_count}/{total_frames} frames")
+                    print(f"✅ IdeaTec processado: {frame_count}/{total_frames} frames")
         
         finally:
             cap.release()
@@ -72,7 +72,7 @@ class MottuVideoProcessor:
         
         # Gerar relatório final
         report = self._generate_processing_report(processing_stats, frame_count)
-        print(f"🎯 Processamento concluído: {report['summary']['total_motorcycles_detected']} motos detectadas")
+        print(f"🎯 IdeaTec processamento concluído: {report['summary']['total_motorcycles_detected']} motos detectadas")
         
         return report
     
@@ -83,7 +83,7 @@ class MottuVideoProcessor:
             print("❌ Erro: Não foi possível acessar a webcam")
             return
         
-        print(f"📷 Iniciando demo em tempo real por {demo_duration} segundos...")
+        print(f"📷 IdeaTec iniciando demo em tempo real por {demo_duration} segundos...")
         print("Pressione 'q' para sair antecipadamente")
         
         start_time = time.time()
@@ -94,19 +94,19 @@ class MottuVideoProcessor:
             if not ret:
                 break
             
-            # Processar frame
-            frame_info = self.detector.detect_motorcycles_in_frame(frame)
-            annotated_frame = self.detector.draw_detections_advanced(frame, frame_info)
+            # CORREÇÃO: Usar o método correto do detector
+            frame_info = self.detector.detect_and_classify_motorcycles(frame)
+            annotated_frame = self.detector.draw_detections_professional_style(frame, frame_info)
             
             # Timer da demo
             elapsed_time = time.time() - start_time
             remaining_time = max(0, demo_duration - elapsed_time)
             
-            timer_text = f"Demo Time: {remaining_time:.1f}s"
+            timer_text = f"IdeaTec Demo Time: {remaining_time:.1f}s"
             cv2.putText(annotated_frame, timer_text, (10, frame.shape[0] - 20), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             
-            cv2.imshow('Mottu Vision - Demo Tempo Real', annotated_frame)
+            cv2.imshow('IdeaTec Tecnologia - Mottu Vision Demo', annotated_frame)
             
             # Verificar saída
             if cv2.waitKey(1) & 0xFF == ord('q') or elapsed_time >= demo_duration:
@@ -116,7 +116,7 @@ class MottuVideoProcessor:
         
         cap.release()
         cv2.destroyAllWindows()
-        print(f"✅ Demo finalizada: {frame_count} frames processados")
+        print(f"✅ IdeaTec demo finalizada: {frame_count} frames processados")
     
     def _generate_processing_report(self, stats: list, total_frames: int) -> Dict:
         """Gera relatório detalhado do processamento"""
@@ -134,6 +134,7 @@ class MottuVideoProcessor:
         
         return {
             'summary': {
+                'projeto': 'IdeaTec Tecnologia - Processamento de Vídeo',
                 'total_frames_processed': total_frames,
                 'total_motorcycles_detected': total_motorcycles,
                 'max_motorcycles_in_frame': max_motorcycles,
