@@ -165,8 +165,8 @@ mottu-vision-sistema/
 
 **Especialistas em Visão Computacional e IoT**
 
-| Nome | Função | Especialidade |
-|------|--------|---------------|
+| Nome | Função | 
+|------|--------|
 | [Carlos Eduardo Rodrigues Coelho Pacheco] | RM 557323 |
 | [Pedro Augusto Costa ladeira] | RM 558514 |
 | [João Pedro Amorim Brito Virgens] | RM 559213 |
