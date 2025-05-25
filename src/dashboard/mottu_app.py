@@ -18,6 +18,47 @@ from detection.moto_detector import MottuMotorcycleDetector
 from detection.video_processor import MottuVideoProcessor
 from simulation.iot_simulator import MottuIoTSimulator
 
+def process_image_for_yolo(image):
+    """
+    Converte imagem para formato compatível com YOLO (3 canais RGB)
+    """
+    # Se imagem PIL, converter para numpy
+    if hasattr(image, 'mode'):
+        # Converter RGBA para RGB se necessário
+        if image.mode == 'RGBA':
+            # Criar fundo branco
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            background.paste(image, mask=image.split()[3])  # Usar canal alpha como máscara
+            image = background
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Converter PIL para numpy array
+        image_np = np.array(image)
+    else:
+        # Se já é numpy array
+        image_np = image
+    
+    # Verificar número de canais
+    if len(image_np.shape) == 3:
+        if image_np.shape[2] == 4:  # RGBA
+            # Converter RGBA para RGB removendo canal alpha
+            image_np = image_np[:, :, :3]
+        elif image_np.shape[2] != 3:
+            # Se não é RGB nem RGBA, forçar para 3 canais
+            if image_np.shape[2] == 1:  # Grayscale
+                image_np = np.repeat(image_np, 3, axis=2)
+    
+    # Garantir que está no formato correto (height, width, 3)
+    if len(image_np.shape) == 2:  # Grayscale sem dimensão de canal
+        image_np = np.stack([image_np] * 3, axis=-1)
+    
+    # Verificação final
+    if image_np.shape[2] != 3:
+        raise ValueError(f"Erro: Imagem tem {image_np.shape[2]} canais, YOLO precisa de 3 canais RGB")
+    
+    return image_np
+
 def main():
     st.set_page_config(
         page_title="IdeaTec Tecnologia - Mottu Vision",
@@ -99,52 +140,70 @@ def main():
         )
         
         if uploaded_file is not None:
-            image = Image.open(uploaded_file)
-            image_np = np.array(image)
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("📷 Imagem Original")
-                st.image(image, use_column_width=True)
-                st.info(f"**Dimensões:** {image.width} x {image.height} pixels")
-            
-            with col2:
-                st.subheader("🎯 Análise IdeaTec")
+            try:
+                # Carregar imagem
+                image = Image.open(uploaded_file)
                 
-                with st.spinner("🔍 IdeaTec analisando imagem..."):
-                    frame_info = detector.detect_and_classify_motorcycles(image_np)
-                    annotated_image = detector.draw_detections_professional_style(image_np, frame_info)
+                col1, col2 = st.columns(2)
                 
-                st.image(annotated_image, use_column_width=True)
+                with col1:
+                    st.subheader("📷 Imagem Original")
+                    # CORREÇÃO: usar use_container_width ao invés de use_column_width
+                    st.image(image, use_container_width=True)
+                    st.info(f"**Dimensões:** {image.width} x {image.height} pixels")
+                    
+                    # Mostrar informações de canal
+                    if hasattr(image, 'mode'):
+                        st.info(f"**Formato:** {image.mode}")
                 
-                # Métricas IdeaTec
-                col2_1, col2_2, col2_3 = st.columns(3)
-                with col2_1:
-                    st.metric("🏍️ Motos Detectadas", frame_info['motorcycles_count'])
-                with col2_2:
-                    st.metric("🚗 Total Veículos", frame_info['total_detections'])
-                with col2_3:
-                    st.metric("⚡ Tempo Proc.", f"{frame_info['processing_time']}s")
-            
-            # Detalhes IdeaTec
-            if frame_info['detections']:
-                st.subheader("📋 Análise Detalhada IdeaTec")
+                with col2:
+                    st.subheader("🎯 Análise IdeaTec")
+                    
+                    with st.spinner("🔍 IdeaTec analisando imagem..."):
+                        # CORREÇÃO: Processar imagem para garantir compatibilidade com YOLO
+                        image_processed = process_image_for_yolo(image)
+                        
+                        # Verificar se processamento foi bem-sucedido
+                        st.success(f"✅ Imagem processada: {image_processed.shape[2]} canais")
+                        
+                        # Detectar motos
+                        frame_info = detector.detect_and_classify_motorcycles(image_processed)
+                        annotated_image = detector.draw_detections_professional_style(image_processed, frame_info)
+                    
+                    # CORREÇÃO: usar use_container_width
+                    st.image(annotated_image, use_container_width=True)
+                    
+                    # Métricas IdeaTec
+                    col2_1, col2_2, col2_3 = st.columns(3)
+                    with col2_1:
+                        st.metric("🏍️ Motos Detectadas", frame_info['motorcycles_count'])
+                    with col2_2:
+                        st.metric("🚗 Total Veículos", frame_info['total_detections'])
+                    with col2_3:
+                        st.metric("⚡ Tempo Proc.", f"{frame_info['processing_time']}s")
                 
-                detection_df = pd.DataFrame([
-                    {
-                        'ID Mottu': det['id'],
-                        'Tipo': det['class'],
-                        'Modelo': det.get('modelo_mottu', 'N/A'),
-                        'Confiança': f"{det['confidence']:.2%}",
-                        'Zona Pátio': det.get('zona_patio', 'N/A'),
-                        'Posição X': det['center'][0],
-                        'Posição Y': det['center'][1]
-                    }
-                    for det in frame_info['detections']
-                ])
+                # Detalhes IdeaTec
+                if frame_info['detections']:
+                    st.subheader("📋 Análise Detalhada IdeaTec")
+                    
+                    detection_df = pd.DataFrame([
+                        {
+                            'ID Mottu': det['id'],
+                            'Tipo': det['class'],
+                            'Modelo': det.get('modelo_mottu', 'N/A'),
+                            'Confiança': f"{det['confidence']:.2%}",
+                            'Zona Pátio': det.get('zona_patio', 'N/A'),
+                            'Posição X': det['center'][0],
+                            'Posição Y': det['center'][1]
+                        }
+                        for det in frame_info['detections']
+                    ])
+                    
+                    st.dataframe(detection_df, use_container_width=True)
                 
-                st.dataframe(detection_df, use_container_width=True)
+            except Exception as e:
+                st.error(f"❌ Erro ao processar imagem: {str(e)}")
+                st.info("💡 Tente usar uma imagem JPG sem transparência ou uma imagem PNG com 3 canais")
     
     with tab2:
         st.header("🎬 Processamento de Vídeo IdeaTec")
@@ -394,16 +453,6 @@ def main():
             - 🚀 Escalabilidade para 100+ filiais
             - 💰 ROI estimado em 18 meses
             - ⚡ Operação em tempo real
-            """)
-            
-            st.subheader("🔮 Roadmap IdeaTec")
-            st.write("""
-            **Próximas Fases:**
-            - 🌐 Deploy em nuvem Azure
-            - 📱 App mobile nativo
-            - 🤖 IA generativa para insights
-            - 🔗 Integração IoT real
-            - 📈 ML para otimizações
             """)
         
         st.success("""
